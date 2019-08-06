@@ -81,11 +81,8 @@ class ETCTimeTA(TA):
         :return: set
         """
         def as_range(it):
-            """
-            The PETC from etctime is modelled as such that k starts at 1, i.e. [0,2] => k=1, k=3
-            """
             l = list(it)
-            return (l[0]+1,l[-1]+1)
+            return (l[0],l[-1])
 
         edge_map = self.transitions_to_edgemap(transitions)
 
@@ -95,8 +92,8 @@ class ETCTimeTA(TA):
         for (start, end), value in edge_map.items():
             # TODO: difference between delay and discrete transitions
             intervals = [as_range(g) for _,g in groupby(value, key=lambda n, c=count(): n-next(c))]
-            edges.add(tuple(val for i in intervals for guard in self.interval_to_guard(i) for val
-                            in [start, guard, action_set, clock_set, end]))
+            edges.update(set(tuple([start, guard, action_set, clock_set, end]) for i in intervals
+                      for guard in self.interval_to_guard(i)))
         return edges
 
 
