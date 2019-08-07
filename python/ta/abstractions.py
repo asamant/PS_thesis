@@ -46,7 +46,8 @@ class ETCTimeTA(TA):
     def parse_abstraction(self, abstraction):
         super().parse_abstraction(abstraction)
         self.locations = self.transitions_to_locations(abstraction.transition)
-        self.edges = self.transitions_to_edges(abstraction.transition)
+        self.edges = self.transitions_to_edges(abstraction.transition, 
+                                               abstraction.trigger.is_discrete_time)
         self.invariants = self.transitions_to_invariants(abstraction.transition)  # map invariants to locations
 
     @staticmethod
@@ -74,7 +75,7 @@ class ETCTimeTA(TA):
                     edge_map[(start, target)] = [step]
         return edge_map
 
-    def transitions_to_edges(self, transitions):
+    def transitions_to_edges(self, transitions, is_discrete_time=False):
         """
         Create guards for a set of transitions
         :param transitions: dict
@@ -90,8 +91,11 @@ class ETCTimeTA(TA):
         action_set = frozenset(self.actions)
         clock_set = frozenset(self.clocks)
         for (start, end), value in edge_map.items():
-            # TODO: difference between delay and discrete transitions
-            intervals = [as_range(g) for _,g in groupby(value, key=lambda n, c=count(): n-next(c))]
+            if is_discrete_time:  # Guards must be always c == g
+                intervals = [(g,g) for g in value]
+            else:  # Guards can be g1 <= c <= g2
+                intervals = [as_range(g) for _,g 
+                             in groupby(value, key=lambda n, c=count(): n-next(c))]
             edges.update(set(tuple([start, guard, action_set, clock_set, end]) for i in intervals
                       for guard in self.interval_to_guard(i)))
         return edges

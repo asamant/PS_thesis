@@ -90,7 +90,8 @@ def timed_automaton(cls):
             Overload this function with a more detailed variant in your TA
             :return:
             """
-            locations = [pyuppaal.Location(invariant=self.invariants.get(loc), name=loc) for loc in self.locations]
+            locations = [pyuppaal.Location(invariant=self.invariants.get(loc), name=loc) for 
+                         loc in self.locations]
             return locations
 
         def generate_transitions(self):
