@@ -17,8 +17,8 @@ Abstractions
 """
 from ta import MatlabAbstraction, MatlabTA
 # Import the abstractions made in matlab and parse into a timed automaton
-CL1 = MatlabAbstraction(f'data/CL1_M_20.mat')
-CL2 = MatlabAbstraction(f'data/CL2_M_20.mat')
+CL1 = MatlabAbstraction(f'../data/CL1_M_20.mat')
+CL2 = MatlabAbstraction(f'../data/CL2_M_20.mat')
 mTA_CL1 = MatlabTA(CL1)
 mTA_CL2 = MatlabTA(CL2)
 
