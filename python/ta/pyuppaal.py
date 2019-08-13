@@ -160,6 +160,7 @@ class Template:
         self.name = name
         self.declaration = declaration
         self.locations = locations or []
+        self.assign_ids()
         self.transitions = [self.transition_name_to_locations(trans) for trans in transitions]
 
         self.initlocation = initlocation

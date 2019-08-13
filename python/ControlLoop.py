@@ -84,7 +84,7 @@ class ControlLoop(TGA):
         return locations
 
     def generate_transitions(self):
-        """ convert edges to transitions """
+        """ convert edges to UPPAAL transitions """
         transitions = []
         for (source, guard, actions_c, actions_u, resets, target) in self.edges:
             props = {}

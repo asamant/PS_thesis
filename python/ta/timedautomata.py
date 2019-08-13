@@ -247,7 +247,7 @@ def game_automaton(cls):
 
         @property
         def actions_u(self):
-            return self.act_c
+            return self.act_u
 
         @actions_u.setter
         @outdate_cache

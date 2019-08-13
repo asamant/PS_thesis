@@ -10,8 +10,11 @@ class TA:
     Base function for abstracting TA's. Is decorated as a TA
     """
     def __init__(self, abstraction, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.clocks = {'c'}
+        super().__init__()
+        if kwargs['clock_name']:
+            self.clocks = kwargs['clock_name']
+        else:
+            self.clocks = {'c'}
         self.abstraction = abstraction
         self.parse_abstraction(abstraction)
 
