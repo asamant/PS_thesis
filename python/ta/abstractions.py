@@ -46,6 +46,10 @@ class TA:
 
 
 class ETCTimeTA(TA):
+    """
+    A Timed Automaton abstracting the traffic model of an ETC system
+    """
+  
     def parse_abstraction(self, abstraction):
         super().parse_abstraction(abstraction)
         self.locations = self.transitions_to_locations(abstraction.transition)
@@ -103,9 +107,7 @@ class ETCTimeTA(TA):
                       for guard in self.interval_to_guard(i)))
         return edges
 
-
-    @staticmethod
-    def transitions_to_invariants(transitions):
+    def transitions_to_invariants(self, transitions):
         """
         Create the mapping of invariants to locations.
         Each location is upper bounded by the final time step found in the transition table
@@ -116,7 +118,10 @@ class ETCTimeTA(TA):
         for (start, step) in transitions.keys():
             upper_bound[start] = max(upper_bound.get(start, 0), step)
         # FIXME: variable set of clocks? immutable, hashable table instead of dict?
-        invariants = {location: f"c<={final_step}" for location, final_step in upper_bound.items()}
+        assert(len(self.clocks) == 1)
+        for clock in self.clocks:  # Which will be only one
+            invariants = {location: f"{clock}<={final_step}" for 
+                          location, final_step in upper_bound.items()}
         return invariants
 
 

@@ -263,6 +263,36 @@ def game_automaton(cls):
     return GameAutomaton
 
 
+def priced_automaton(cls):
+    """
+    Decorator to turn a class (should be an automaton) into a priced automaton.
+
+    :param cls:
+    :return:
+    """
+    class PricedAutomaton(cls):
+        price_name = ''
+        price_loc = {}  # tuple:int  -- Dict of locations into price increment
+        price_edge = {}   # tuple:int  -- Dict of edges into price derivative
+        
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.price_name = kwargs.get('price_name') or 'p'
+            self.price_loc = {}  # Assign price to locations
+            self.price_edge = {}  # Assign price to edges
+        
+        def price_declaration(self):
+            if self.price_edge == {}:
+                if self.price_loc == {}:
+                    return None
+                else:
+                    return f'meta int {self.price_name};\n'
+            else:
+                return f'hybrid clock {self.price_name}\n;'
+            
+    return PricedAutomaton
+
+
 def timed_game_automaton(cls):
     @game_automaton
     @timed_automaton
@@ -435,12 +465,21 @@ class NTA:
 class NTGA:
     pass
 
+
 @timed_automaton
+@priced_automaton
 class PTA:
     pass
 
 
 @timed_game_automaton
+@priced_automaton
+class PTGA:
+    pass
+
+
+@timed_game_automaton
+@priced_automaton
 class SPTGA:
     pass
 
