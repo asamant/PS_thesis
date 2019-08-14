@@ -278,6 +278,7 @@ def priced_automaton(cls):
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
             self.price_name = kwargs.get('price_name') or 'p'
+            self.price_max = kwargs.get('price_max') or 100
             self.price_loc = {}  # Assign price to locations
             self.price_edge = {}  # Assign price to edges
         
@@ -286,9 +287,12 @@ def priced_automaton(cls):
                 if self.price_edge == {}:
                     return ''
                 else:
-                    return f'meta int {self.price_name};'
+                    return f'meta int[0, {self.price_max}] {self.price_name};'
             else:
-                return f'hybrid clock {self.price_name};'
+                if self.price_edge == {}:
+                    return f'hybrid clock {self.price_name};'
+                else:
+                    Exception('Price on both location and edges not implemented.')
             
     return PricedAutomaton
 

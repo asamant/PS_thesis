@@ -11,7 +11,7 @@ class TA:
     """
     def __init__(self, abstraction, *args, **kwargs):
         super().__init__()
-        if kwargs['clock_name']:
+        if kwargs.get('clock_name'):
             self.clocks = kwargs['clock_name']
         else:
             self.clocks = {'c'}
