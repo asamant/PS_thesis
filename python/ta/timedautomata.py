@@ -8,10 +8,10 @@ CLass modeling a TA following Dieky
 
 from ta import pyuppaal
 import logging
+import dataclasses
 
 from functools import wraps
-
-
+        
 class ta_base:
     """
     A single timed automaton consists of:
@@ -282,13 +282,13 @@ def priced_automaton(cls):
             self.price_edge = {}  # Assign price to edges
         
         def price_declaration(self):
-            if self.price_edge == {}:
-                if self.price_loc == {}:
-                    return None
+            if self.price_loc == {}:
+                if self.price_edge == {}:
+                    return ''
                 else:
-                    return f'meta int {self.price_name};\n'
+                    return f'meta int {self.price_name};'
             else:
-                return f'hybrid clock {self.price_name}\n;'
+                return f'hybrid clock {self.price_name};'
             
     return PricedAutomaton
 
@@ -475,7 +475,8 @@ class PTA:
 @timed_game_automaton
 @priced_automaton
 class PTGA:
-    pass
+    def __init__(self, *args, **kwargs):
+        pass
 
 
 @timed_game_automaton
