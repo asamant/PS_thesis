@@ -297,6 +297,21 @@ def priced_automaton(cls):
     return PricedAutomaton
 
 
+def stochastic_automaton(cls):
+    """Decorator to add stochastic automaton elements to a class.
+
+    """
+
+    def __init__(self, *args, **kwargs):
+        pass
+
+    class StochasticAutomaton(cls):
+        prob_location = {}  # TODO
+        prob_edge = {}  #[edge]: probability weight (int)
+
+    return StochasticAutomaton
+
+
 def timed_game_automaton(cls):
     @game_automaton
     @timed_automaton
@@ -485,6 +500,8 @@ class PTGA:
 
 @timed_game_automaton
 @priced_automaton
+@stochastic_automaton
 class SPTGA:
-    pass
+    def __init__(self, *args, **kwargs):
+        pass
 

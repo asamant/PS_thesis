@@ -178,7 +178,8 @@ class Template:
                                     select=transition.select.value, guard=transition.guard.value,
                                     synchronisation=transition.synchronisation.value,
                                     assignment=transition.assignment.value, action=transition.action,
-                                    controllable=transition.controllable)
+                                    controllable=transition.controllable,
+                                    probability=transition.probability.value)
         if isinstance(transition.target, str):
             try:
                 target = self.get_location_by_name(transition.target)
@@ -188,7 +189,8 @@ class Template:
                                     select=transition.select.value, guard=transition.guard.value,
                                     synchronisation=transition.synchronisation.value,
                                     assignment=transition.assignment.value, action=transition.action,
-                                    controllable=transition.controllable)
+                                    controllable=transition.controllable,
+                                    probability=transition.probability.value)
         return transition
 
     def assign_ids(self):
@@ -398,7 +400,10 @@ last_transition_id = 0
 class Transition:
     @require_keyword_args(3)
     def __init__(self, source, target, select='', guard='', synchronisation='',
-                    assignment='', action = None, controllable=True):
+                    assignment='', action = None, controllable=True,
+                    probability = None):
+        if controllable and probability is not None:
+            raise Exception('A controllable edge should have no probability.')
         self.source = source
         self.target = target
         self.select = Label("select", select)
@@ -408,6 +413,7 @@ class Transition:
         self.nails = []
         self.action = action
         self.controllable = controllable
+        self.probability = Label("probability", probability)
 
         global last_transition_id
         self.id = 'Transition' + str(last_transition_id)
@@ -418,7 +424,8 @@ class Transition:
             select=self.select.value, 
             guard=self.guard.value,
             synchronisation=self.synchronisation.value,
-            assignment=self.assignment.value)
+            assignment=self.assignment.value,
+            probability=self.probability.value)
         return newone
 
     def sharpen(self, angleThreshold, lengthThreshold):
@@ -472,9 +479,11 @@ class Transition:
       %s
       %s
       %s
+      %s
     </transition>""" % (action_str,controllable_str,self.source.id, self.target.id,
         self.select.to_xml(), self.guard.to_xml(),
         self.synchronisation.to_xml(), self.assignment.to_xml(),
+        self.probability.to_xml(),
         "\n".join(map(lambda x: x.to_xml(), self.nails))
         )
 
