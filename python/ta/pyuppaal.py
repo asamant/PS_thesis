@@ -156,10 +156,14 @@ class NTA:
             self.templates += [template]    
 
 class Template:
-    def __init__(self, name, declaration="", locations=None, initlocation=None, transitions=iter(()), parameter=None):
+    def __init__(self, name, declaration="", locations=None, initlocation=None,
+                 transitions=iter(()), parameter=None, branchpoints=None):
         self.name = name
         self.declaration = declaration
         self.locations = locations or []
+        if branchpoints is not None:
+            self.locations += list(branchpoints.values())
+        self.branchpoints = branchpoints or {}
         self.assign_ids()
         self.transitions = [self.transition_name_to_locations(trans) for trans in transitions]
 
@@ -173,7 +177,9 @@ class Template:
             try:
                 source = self.get_location_by_name(transition.source)
             except AssertionError:
-                raise Exception(f'{transition.source} not found in locations')
+                source = self.branchpoints.get(transition.source)
+                if source is None:
+                    raise Exception(f'{transition.source} not found in locations')
             transition = Transition(source, transition.target,
                                     select=transition.select.value, guard=transition.guard.value,
                                     synchronisation=transition.synchronisation.value,
@@ -184,7 +190,9 @@ class Template:
             try:
                 target = self.get_location_by_name(transition.target)
             except AssertionError:
-                raise Exception(f'{transition.target} not found in locations')
+                target = self.branchpoints.get(transition.target)
+                if target is None:
+                    raise Exception(f'{transition.target} not found in locations')
             transition = Transition(transition.source, target,
                                     select=transition.select.value, guard=transition.guard.value,
                                     synchronisation=transition.synchronisation.value,
@@ -204,7 +212,8 @@ class Template:
         return int(-float(coord)*1.5)
 
     def get_location_by_name(self, name):
-        locs = [l for l in self.locations if l.name.value == name]
+        locs = [l for l in self.locations
+                if isinstance(l, Location) and l.name.value == name]
         assert len(locs) == 1
         return locs[0]
     
@@ -222,7 +231,8 @@ class Template:
         for l in [self.initlocation] + self.locations:
             G.add_node(l.id)
             node = G.get_node(l.id)
-            node.attr['label'] = l.invariant.get_value().replace('\n', '\\n')
+            if isinstance(l, Location):
+                node.attr['label'] = l.invariant.get_value().replace('\n', '\\n')
         for t in self.transitions:
             if auto_nails:
                 t.nails = []
@@ -244,8 +254,9 @@ class Template:
 
         for l in self.locations:
             (l.xpos, l.ypos) = map(self.dot2uppaalcoord, G.get_node(l.id).attr['pos'].split(','))
-            (l.name.xpos, l.name.ypos) = (l.xpos, l.ypos + UPPAAL_LINEHEIGHT)
-            (l.invariant.xpos, l.invariant.ypos) = (l.xpos, l.ypos + 2 * UPPAAL_LINEHEIGHT)
+            if isinstance(l, Location):  # No name or anything if Branchpoint
+                (l.name.xpos, l.name.ypos) = (l.xpos, l.ypos + UPPAAL_LINEHEIGHT)
+                (l.invariant.xpos, l.invariant.ypos) = (l.xpos, l.ypos + 2 * UPPAAL_LINEHEIGHT)
         for t in self.transitions:
             #for nail in t.nails:
             #    nailnode = G.get_node(nail.id)
@@ -402,8 +413,6 @@ class Transition:
     def __init__(self, source, target, select='', guard='', synchronisation='',
                     assignment='', action = None, controllable=True,
                     probability = None):
-        if controllable and probability is not None:
-            raise Exception('A controllable edge should have no probability.')
         self.source = source
         self.target = target
         self.select = Label("select", select)

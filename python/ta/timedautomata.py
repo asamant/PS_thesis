@@ -293,7 +293,7 @@ def priced_automaton(cls):
                     return f'hybrid clock {self.price_name};'
                 else:
                     Exception('Price on both location and edges not implemented.')
-            
+
     return PricedAutomaton
 
 
@@ -302,12 +302,19 @@ def stochastic_automaton(cls):
 
     """
 
-    def __init__(self, *args, **kwargs):
-        pass
-
     class StochasticAutomaton(cls):
         prob_location = {}  # TODO
         prob_edge = {}  #[edge]: probability weight (int)
+
+        def generate_branchpoints(self):
+            """Generate Branchpoint dictionary.
+    
+            :return:
+            """
+            branchpoints = {b: pyuppaal.Branchpoint()
+                            for b in self.branchpoints}
+
+            return branchpoints
 
     return StochasticAutomaton
 
@@ -501,7 +508,31 @@ class PTGA:
 @timed_game_automaton
 @priced_automaton
 @stochastic_automaton
-class SPTGA:
+class SptgaBase:
     def __init__(self, *args, **kwargs):
         pass
+
+
+class SPTGA(SptgaBase):
+    def create_template(self):
+        """Stochastic needs branchpoints.
+
+        :return:
+        """
+        locations = self.generate_locations()
+        branchpoints = self.generate_branchpoints()
+        transitions = self.generate_transitions()
+        declarations = self.generate_declarations()
+        template = pyuppaal.Template(self._pyuppaal.name,
+                                     declaration=declarations,
+                                     locations=locations,
+                                     transitions=transitions,
+                                     branchpoints=branchpoints)
+        self.assign_initial_location(template)
+        # try:
+            # template.layout(auto_nails=True)
+        # except AssertionError:
+        #     pass
+
+        return template
 
