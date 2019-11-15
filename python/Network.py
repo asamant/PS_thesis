@@ -102,7 +102,11 @@ class Network(TGA):
                 props.update({'synchronisation': ','.join(actions_u)})
             if resets:
                 props.update({'assignment': ','.join([f'{clock}=0' for clock in resets])})
-            props.update({'controllable': False})
+            # props.update({'controllable': False})
+            # if target == 'Off':
+            # The edges must be controllable, the synchronisation channel is
+            # not a guard
+            props['controllable'] = True
             transitions.append(pyuppaal.Transition(source,
                                                    target,
                                                    **props))

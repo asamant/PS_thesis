@@ -287,7 +287,7 @@ def priced_automaton(cls):
                 if self.price_edge == {}:
                     return ''
                 else:
-                    return f'meta int[0, {self.price_max}] {self.price_name};'
+                    return f'int[0, {self.price_max}] {self.price_name};'
             else:
                 if self.price_edge == {}:
                     return f'hybrid clock {self.price_name};'

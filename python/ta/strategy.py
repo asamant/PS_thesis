@@ -4,110 +4,104 @@ from .timedautomata import network_timed_automata
 
 TiGaGrammar = Grammar(
     r"""
-    strategy        = in_state states newline
+    strategy        = in_state_block rules newline
     
-    in_state        = in_open locations newline? in_condition newline in_close
+    in_state_block  = in_open in_state newline? in_condition newline in_close
+    in_state        = "(" location+ ws ") " vars
     in_condition    = "(#" space_del_text+ ")"
     in_open         = "Initial state:" newline
-    in_close        = "Note: The 'strategy' is not guaranteed to be a strategy." newline+ in_text
+    caveat          = "Note: The 'strategy' is not guaranteed to be a strategy."
+    in_close        = caveat newline newline in_text
     in_text         = "Strategy to win:" / "Strategy to avoid losing:"
     
-    states          = state+
-    state           = st_open locations action
-    st_open         = newline+ "State:" ws*
-    action          = (move / delay)+
+    rules           = rule+
+    rule            = rule_open state actions
+    rule_open       = newline newline "State:" ws
+    actions         = (move / delay)+
     
-    globals         = var+ newline?
-    var             = char+ "=" char+ ws
-    location        = ws text+
-    loc_addendum    = ws* text* ws*
-    locations       = "(" location+ ws ") " globals+
+    state           = "(" location+ ws ") " vars
+    vars            = var_state*
+    var_state       = var_name "=" int ws
+    var_name        = (char "." char) / char
+    location        = ws text
+    loc_addendum    = ws text ws
     
-    delays          = delay+
-    delay           = newline* del_open invariants del_close
+    delay           = newline? del_open invariants del_close
     del_open        = "While you are in" tab
     del_close       = ", wait."
     
-    moves           = move+
-    move            = newline* mv_open invariants mv_close transition
+    move            = newline? mv_open invariants mv_close transitions
     mv_open         = "When you are in "
     mv_close        = ","
        
-    transition      = tr_open trans conditions
+    transitions     = tr_open transition (newline transition)*
+    transition      = trans conditions
     tr_open         = ws* "take transition" ws*
-    tr_close        = ws
     trans           = start to end
     to              = "->"
-    start           = text+
-    end             = text+
+    start           = text
+    end             = text
     
     cond            = ","? ws space_del_text+
-    conditions      = ws "{" cond+ "}"
+    conditions_old  = ws "{" cond+ "}"
+    conditions      = ws cond_alt
+    cond_alt        = ~"{[A-z0-9\.=><:#\?\+\-! ,'\(\)]*}"i
            
-    inv             = "&&"? ws? inv_text+ ws?
-    inv_text        = ~"[A-z0-9.=><\-+']*"i
+    inv             = "&&"? ws? inv_text ws?
+    inv_text        = ~"[A-z0-9\.=><\-\+#']+"i
     invariant       = " || "? "(" inv+ ")"
-    invariants      = invariant+
+    invariants      = ("true" / invariant+)
     
     tab             = ~"\t"
     ws              = ~"\s*"i
-    newline         = ~"\n*"
-    text            = ~"[A-z0-9.&=><:#']*"i
+    newline         = ~"\n"
+    text            = ~"[A-z0-9\.&=><:#\?\+']*"i
     char            = ~"[A-z0-9]*"i
-    space_del_text  = ws* text+
+    int             = ~"[0-9]+"i
+    space_del_text  = ws text
     """
 )
 
 
-@network_timed_automata
 class parser(NodeVisitor):
     grammar = TiGaGrammar
+    strategy = {}
+    variables = tuple()
 
     def visit_strategy(self, node, visited_children):
         """
-        strategy = in_state states newline
+        strategy = in_state rules newline
 
         :param node:
         :param visited_children:
         :return:
         """
-        in_state, states, newline = visited_children
+
         return self
 
-    def visit_state(self, node, visited_children):
+    def visit_rule(self, node, visited_children):
         """
-        state = st_open locations delays? moves?
+        rule = rule_open state actions
         :param node:
         :param visited_children:
         :return:
         """
-        st_open, locations, action = visited_children
-        self.locations.add(locations)
-        delays, moves = action
-        self.invariants.update({locations: delays})
-        for move in moves:
-            source, guards, target = move
-            self.edges.update([(source, frozenset(guards), False, frozenset(), target)])
+
+        _, state, actions = visited_children
+        self.strategy[state] = actions
         # add edges, (start, end,
         # state = {name: child for (name, child) in visited_children if child}
-        return {"state": locations}
+        return
 
-    def visit_action(self, node, visited_children):
+    def visit_actions(self, node, visited_children):
         """
-        action = (move / delay)
+        actions = (move / delay)+
         :param node:
         :param visited_children:
         :return:
         """
-        delays = []
-        moves = []
-        for index, action in enumerate(node.children):
-            for counter, child in enumerate(action.children):
-                if child.expr_name == 'move' and len(visited_children[index][counter]) > 0:
-                    moves.append(visited_children[index][counter])
-                elif child.expr_name == 'delay'and len(visited_children[index][counter]) > 0:
-                    delays.append(visited_children[index][counter])
-        return delays, moves
+
+        return [(x, y) for act in visited_children for x,y in act[0]]
 
     def visit_location(self, node, visited_children):
         """
@@ -120,16 +114,51 @@ class parser(NodeVisitor):
         if len(text) > 0:
             return "".join(text)
 
-
-    def visit_locations(self, node, visited_children):
+    def visit_var_name(self, node, visited_children):
         """
-        locations = "(" location+ " )" loc_addendum
+        var_name = char "." char
+        """
+
+        return node.text
+
+    def visit_var_state(self, node, visited_children):
+        """
+        var_state = var_name "=" int ws
+        """
+        var, _, value, _ = visited_children
+        return {var: value}
+
+    def visit_vars(self, node, visited_children):
+        """
+        vars = var_state*
+        """
+
+        var_list = visited_children
+        return {n: v for x in var_list for n, v in x.items()}
+
+    def visit_in_state(self, node, visited_children):
+        """
+        in_state = "(" location+ ws ") " vars
         :param node:
         :param visited_children:
         :return:
         """
-        _, locations, _, ws, addendum = visited_children
-        return frozenset(location for location in locations if location)
+
+        # Just store the variable states and ignore the rest
+        _, _, _, _, variables = visited_children
+        self.variables = tuple(v for v in variables)
+        return
+
+    def visit_state(self, node, visited_children):
+        """
+        state = "(" location+ ws ") " vars
+        :param node:
+        :param visited_children:
+        :return:
+        """
+        _, locations, _, _, variables = visited_children
+        return tuple(location for location in locations if location) \
+            + tuple(variables.values())  # Order is always the same
 
     def visit_invariant(self, node, visited_children):
         """
@@ -138,20 +167,30 @@ class parser(NodeVisitor):
         :param visited_children:
         :return:
         """
-        _or, _, invariant, _ = visited_children
-        # print(invariant)
-        return frozenset(inv for inv in invariant if len(inv) > 0)
+        _, _, invs, _ = visited_children
+        return frozenset(inv for inv in invs if len(inv) > 0)
+
+    def visit_inv(self, node, visited_children):
+        """
+        inv = "&&"? ws? inv_text+ ws?
+
+        Returns
+        -------
+        List of invariants
+
+        """
+        _, _, inv, _ = visited_children
+        return inv
 
     def visit_move(self, node, visited_children):
         """
-        move = newline* mv_open invariants mv_close transition
+        move = newline* mv_open invariants mv_close transitions
         :param node:
         :param visited_children:
         :return:
         """
-        newline, mv_open, guards, close, transition = visited_children
-        source, target = transition
-        return source, guards, target
+        _, _, invariants, close, transitions = visited_children
+        return [(inv, [t[1] for t in transitions]) for inv in invariants]
 
     def visit_delay(self, node, visited_children):
         """
@@ -160,17 +199,26 @@ class parser(NodeVisitor):
         :param visited_children:
         :return:
         """
-        newline, del_open, invariants, del_close = visited_children
-        return set(invariants)
+        _, _, invariants, _ = visited_children
+        return [(inv, "wait") for inv in invariants]
+
+    def visit_transitions(self, node, visited_children):
+        """
+        transitions = tr_open transition (newline transition)*
+        """
+        _, first_transition, rest = visited_children
+        transitions = [first_transition]
+        transitions += [t[1] for t in rest]
+        return transitions
 
     def visit_transition(self, node, visited_children):
         """
-        transition = tr_open trans conditions
+        transition = trans conditions
         :param node:
         :param visited_children:
         :return:
         """
-        tr_open, trans, conditions = visited_children
+        trans, conditions = visited_children
         return trans
 
     def visit_trans(self, node, visited_children):
@@ -180,7 +228,7 @@ class parser(NodeVisitor):
         :param visited_children:
         :return:
         """
-        start, to, end = visited_children
+        start, _, end = visited_children
         return start, end
 
     def visit_start(self, node, *args):
@@ -201,44 +249,14 @@ class parser(NodeVisitor):
         """
         return node.text
 
-    def visit_in_state(self, node, visited_children):
-        """
-        in_state = in_open locations newline? in_condition newline in_close
-        :param node:
-        :param visited_children:
-        :return:
-        """
-        in_open, locations, newline, in_condition, newline, in_close = visited_children
-        return visited_children
-
-    def visit_in_condition(self, node, visited_children):
-        """
-        in_condition = "(" space_del_text+ ")"
-
-        :param node:
-        :param visited_children:
-        :return:
-        """
-        _, initial_condition, _ = visited_children
-        return node.expr_name, node.text
-
-    def visit_inv(self, node, visited_children):
-        """
-        inv = "&&"? ~"[A-z0-9.=><\-+\s']*"i
-
-        :param node:
-        :param args:
-        :return:
-        """
-        _and, ws, inv, ws = visited_children
-        if len(inv) > 0:
-            return "".join(inv)
-
     def visit_text(self, node, *args):
         return node.text
 
     def visit_inv_text(self, node, *args):
         return node.text
+
+    def visit_int(self, node, *args):
+        return int(node.text)
 
     def visit_space_del_text(self, node, *args):
         """
